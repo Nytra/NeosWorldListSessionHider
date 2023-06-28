@@ -33,31 +33,15 @@ namespace WorldListSessionHider
         //private static ModConfigurationKey<string> UNIVERSE_IDS = new ModConfigurationKey<string>("UNIVERSE_IDS", "Universe IDs:", () => "");
         [AutoRegisterConfigKey]
         private static ModConfigurationKey<dummy> DUMMY_1 = new ModConfigurationKey<dummy>("DUMMY_1", "<i><color=gray>All of these can be comma-separated to store multiple values.</color></i>", () => new dummy());
-        
-        //private static WorldListManager manager = null;
-        //private static MethodInfo updateListMethod = AccessTools.Method(typeof(WorldListManager), "UpdateList");
+        [AutoRegisterConfigKey]
+        private static ModConfigurationKey<dummy> DUMMY_2 = new ModConfigurationKey<dummy>("DUMMY_2", "<size=0></size>", () => new dummy());
+        [AutoRegisterConfigKey]
+        private static ModConfigurationKey<bool> HIDE_COMPLETELY = new ModConfigurationKey<bool>("HIDE_COMPLETELY", "Hide sessions completely:", () => false);
 
         public override void OnEngineInit()
         {
             Harmony harmony = new Harmony("owo.Nytra.WorldListSessionHider");
             Config = GetConfiguration();
-            //Config.OnThisConfigurationChanged += (configChangedEvent) =>
-            //{
-            //    if (configChangedEvent.Key == MOD_ENABLED)
-            //    {
-            //        if (manager == null)
-            //        {
-            //            manager = Userspace.UserspaceWorld.RootSlot.GetComponentInChildren<WorldListManager>();
-            //        }
-            //        if (manager != null)
-            //        {
-            //            manager.RunSynchronously(async () => 
-            //            {
-            //                await Engine.Current.GlobalCoroutineManager.StartTask(async () => await (Task)updateListMethod.Invoke(manager, new object[0]));
-            //            });
-            //        }
-            //    }
-            //};
             harmony.PatchAll();
         }
 
@@ -71,14 +55,21 @@ namespace WorldListSessionHider
 
         private static void Hide(WorldThumbnailItem worldThumbnailItem)
         {
-            updateThumbnailMethod.Invoke(worldThumbnailItem, new object[] { NeosAssets.Skyboxes.Thumbnails.NoThumbnail });
-            var nameText = (SyncRef<Text>)nameTextField.GetValue(worldThumbnailItem);
-            nameText.Target.Content.Value = "<i>[HIDDEN]</i>";
-            var detailText = (SyncRef<Text>)detailTextField.GetValue(worldThumbnailItem);
-            detailText.Target.Content.Value = "<i>...</i>";
-            var counterText = (SyncRef<Text>)counterTextField.GetValue(worldThumbnailItem);
-            counterText.Target.Content.Value = "<i>...</i>";
-            deferredThumbnailField.SetValue(worldThumbnailItem, NeosAssets.Skyboxes.Thumbnails.NoThumbnail);
+            if (Config.GetValue(HIDE_COMPLETELY))
+            {
+                worldThumbnailItem.Slot.ActiveSelf = false;
+            }
+            else
+            {
+                updateThumbnailMethod.Invoke(worldThumbnailItem, new object[] { NeosAssets.Skyboxes.Thumbnails.NoThumbnail });
+                var nameText = (SyncRef<Text>)nameTextField.GetValue(worldThumbnailItem);
+                nameText.Target.Content.Value = "<i>[HIDDEN]</i>";
+                var detailText = (SyncRef<Text>)detailTextField.GetValue(worldThumbnailItem);
+                detailText.Target.Content.Value = "<i>...</i>";
+                var counterText = (SyncRef<Text>)counterTextField.GetValue(worldThumbnailItem);
+                counterText.Target.Content.Value = "<i>...</i>";
+                deferredThumbnailField.SetValue(worldThumbnailItem, NeosAssets.Skyboxes.Thumbnails.NoThumbnail);
+            }
         }
 
         [HarmonyPatch(typeof(WorldThumbnailItem), "UpdateInfo")]
