@@ -14,24 +14,28 @@ namespace ModNameGoesHere
 {
     public class ModNameGoesHere : NeosMod
     {
-        public override string Name => "WorldListFilter";
+        public override string Name => "WorldListSessionHider";
         public override string Author => "Nytra";
         public override string Version => "1.0.0";
         public override string Link => "https://github.com/Nytra/NeosWorldListFilter";
         public static ModConfiguration Config;
 
         [AutoRegisterConfigKey]
-        private static ModConfigurationKey<bool> MOD_ENABLED = new ModConfigurationKey<bool>("MOD_ENABLED", "Mod enabled:", () => true);
+        private static ModConfigurationKey<bool> MOD_ENABLED = new ModConfigurationKey<bool>("MOD_ENABLED", "Enable hiding sessions:", () => false);
         [AutoRegisterConfigKey]
-        private static ModConfigurationKey<string> HOST_USERIDS = new ModConfigurationKey<string>("HOST_USERIDS", "Host User-IDs to filter (Comma separated):", () => "");
+        private static ModConfigurationKey<string> HOST_USERIDS = new ModConfigurationKey<string>("HOST_USERIDS", "Host User IDs:", () => "");
         [AutoRegisterConfigKey]
-        private static ModConfigurationKey<string> HOST_USERNAMES = new ModConfigurationKey<string>("HOST_USERNAMES", "Host Usernames to filter (Comma separated):", () => "");
+        private static ModConfigurationKey<string> HOST_USERNAMES = new ModConfigurationKey<string>("HOST_USERNAMES", "Host Usernames:", () => "");
         [AutoRegisterConfigKey]
-        private static ModConfigurationKey<string> SESSION_IDS = new ModConfigurationKey<string>("SESSION_IDS", "Session IDs to filter (Comma separated):", () => "");
+        private static ModConfigurationKey<string> SESSION_IDS = new ModConfigurationKey<string>("SESSION_IDS", "Session IDs:", () => "");
+        [AutoRegisterConfigKey]
+        private static ModConfigurationKey<string> UNIVERSE_IDS = new ModConfigurationKey<string>("UNIVERSE_IDS", "Universe IDs:", () => "");
+        [AutoRegisterConfigKey]
+        private static ModConfigurationKey<dummy> DUMMY_1 = new ModConfigurationKey<dummy>("DUMMY_1", "<i><color=gray>All of these can be comma-separated to store multiple values.</color></i>", () => new dummy());
 
         public override void OnEngineInit()
         {
-            Harmony harmony = new Harmony("owo.Nytra.WorldListFilter");
+            Harmony harmony = new Harmony("owo.Nytra.WorldListSessionHider");
             Config = GetConfiguration();
             harmony.PatchAll();
         }
@@ -45,76 +49,57 @@ namespace ModNameGoesHere
             {
                 if (!Config.GetValue(MOD_ENABLED)) return true;
 
-                object sessionsObj = AccessTools.Field(itemType, "sessions").GetValue(item);
-                SlimList<SessionInfo> sessionsList = (SlimList<SessionInfo>)sessionsObj;
+                SlimList<SessionInfo> sessionsList = (SlimList<SessionInfo>)AccessTools.Field(itemType, "sessions").GetValue(item);
+                string itemId = (string)AccessTools.Field(itemType, "id").GetValue(item);
+
                 foreach (SessionInfo info in sessionsList)
                 {
-                    Msg($"Session Name: {info.Name}");
-                    Msg($"\t\tHost User-ID: {info.HostUserId}");
-                    Msg($"\t\tHost UserName: {info.HostUsername}");
+                    string hostUserIdsRaw = Config.GetValue(HOST_USERIDS);
+                    string hostUsernamesRaw = Config.GetValue(HOST_USERNAMES);
+                    string sessionIdsRaw = Config.GetValue(SESSION_IDS);
+                    string universeIdsRaw = Config.GetValue(UNIVERSE_IDS);
 
-                    string host_ids = Config.GetValue(HOST_USERIDS);
-                    string host_names = Config.GetValue(HOST_USERNAMES);
-                    string session_ids = Config.GetValue(SESSION_IDS);
-
-                    string[] idparts = host_ids.Split(',');
-                    string[] nameparts = host_names.Split(',');
-                    string[] sessionidparts = session_ids.Split(',');
+                    string[] hostUserIdParts = hostUserIdsRaw.Split(',');
+                    string[] hostUsernameParts = hostUsernamesRaw.Split(',');
+                    string[] sessionIdParts = sessionIdsRaw.Split(',');
+                    string[] universeIdParts = universeIdsRaw.Split(',');
 
                     bool flag = false;
-                    if (idparts.Length > 0)
+                    if (!flag && info.HasEnded)
                     {
-                        if (idparts.Contains(info.HostUserId))
-                        {
-                            flag = true;
-                            goto Finish;
-                        }
+                        flag = true;
+                        Debug("Session has ended.");
                     }
-                    else
+                    if (hostUserIdsRaw.Length > 0 && hostUserIdParts.Contains(info.HostUserId))
                     {
-                        if (host_ids != null && host_ids.Length > 0 && host_ids == info.HostUserId)
-                        {
-                            flag = true;
-                            goto Finish;
-                        }
+                        flag = true;
+                        Debug("UserID Hit!");
                     }
-                    if (nameparts.Length > 0)
+                    if (hostUsernamesRaw.Length > 0 && hostUsernameParts.Contains(info.HostUsername))
                     {
-                        if (nameparts.Contains(info.HostUsername))
-                        {
-                            flag = true;
-                            goto Finish;
-                        }
+                        flag = true;
+                        Debug("Username Hit!");
                     }
-                    else
+                    if (sessionIdsRaw.Length > 0 && sessionIdParts.Contains(info.SessionId))
                     {
-                        if (host_names != null && host_names.Length > 0 && host_names == info.HostUsername)
-                        {
-                            flag = true;
-                            goto Finish;
-                        }
+                        flag = true;
+                        Debug("SessionID Hit!");
                     }
-                    if (sessionidparts.Length > 0)
+                    if (universeIdsRaw.Length > 0 && universeIdParts.Contains(info.UniverseId))
                     {
-                        if (sessionidparts.Contains(info.SessionId))
-                        {
-                            flag = true;
-                            goto Finish;
-                        }
+                        flag = true;
+                        Debug("UniverseID Hit!");
                     }
-                    else
-                    {
-                        if (session_ids != null && session_ids.Length > 0 && session_ids == info.SessionId)
-                        {
-                            flag = true;
-                            goto Finish;
-                        }
-                    }
-                    
-                    Finish:
+
                     if (flag)
                     {
-                        Msg("\t\t\t\tDetected! Filtering this item.");
+                        Debug("Detected! Hiding this item.");
+                        Debug($"Item Id: {itemId}");
+                        Debug($"Session Name: {info.Name}");
+                        Debug($"Host UserID: {info.HostUserId}");
+                        Debug($"Host UserName: {info.HostUsername}");
+                        Debug($"SessionID: {info.SessionId}");
+                        Debug($"UniverseID: {info.UniverseId}");
                         __result = false;
                         return false;
                     }
