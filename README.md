@@ -1,6 +1,6 @@
 # WorldListSessionHider
 
-A [NeosModLoader](https://github.com/zkxs/NeosModLoader) mod for [Neos VR](https://neos.com/) that hides sessions in your world browser based on host userID/username or sessionID.
+A [NeosModLoader](https://github.com/zkxs/NeosModLoader) mod for [Neos VR](https://neos.com/) that hides sessions in your world list based on host userID/username or sessionID.
 
 ## Installation
 1. Install [NeosModLoader](https://github.com/zkxs/NeosModLoader).
