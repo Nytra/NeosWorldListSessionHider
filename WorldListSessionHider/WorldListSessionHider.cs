@@ -15,7 +15,7 @@ namespace WorldListSessionHider
 	{
 		public override string Name => "WorldListSessionHider";
 		public override string Author => "Nytra";
-		public override string Version => "1.0.0";
+		public override string Version => "1.1.0";
 		public override string Link => "https://github.com/Nytra/NeosWorldListSessionHider";
 		public static ModConfiguration Config;
 
