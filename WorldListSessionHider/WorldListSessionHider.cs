@@ -8,7 +8,6 @@ using System.Linq;
 using CloudX.Shared;
 using BaseX;
 using FrooxEngine.UIX;
-using System.Threading.Tasks;
 
 namespace WorldListSessionHider
 {
@@ -66,8 +65,6 @@ namespace WorldListSessionHider
 		private static ModConfigurationKey<bool> HIDE_ENDED_SESSIONS_COMPLETELY = new ModConfigurationKey<bool>("HIDE_ENDED_SESSIONS_COMPLETELY", "Hide ended sessions completely:", () => false, internalAccessOnly: true);
 		[AutoRegisterConfigKey]
 		private static ModConfigurationKey<bool> EXTRA_LOGGING = new ModConfigurationKey<bool>("EXTRA_LOGGING", "Enable extra debug logging:", () => false, internalAccessOnly: true);
-
-		//private const string SUBSCRIBED_TAG = "WorldListSessionHider.Subscribed";
 
 		public override void OnEngineInit()
 		{
@@ -192,24 +189,6 @@ namespace WorldListSessionHider
 			public static void Postfix(WorldThumbnailItem __instance, FrooxEngine.Record record, IReadOnlyList<SessionInfo> sessions, IReadOnlyList<World> openedWorlds)
 			{
 				if (!Config.GetValue(MOD_ENABLED)) return;
-
-				//if (__instance.Slot.Tag == SUBSCRIBED_TAG)
-				//{
-				//	CheckSession(__instance, "From Patch1 early return");
-				//	return;
-				//}
-
-				//if (Config.GetValue(EXTRA_LOGGING))
-				//{
-				//	Debug($"Subcribing to {__instance.Name} {__instance.ReferenceID}.");
-				//}
-
-				//__instance.Slot.Tag = SUBSCRIBED_TAG;
-
-				//__instance.WorldOrSessionId.Changed += (iChangeable) =>
-				//{
-				//	CheckSession(__instance, "From Changed Event");
-				//};
 
 				CheckSession(__instance, "Called from UpdateInfo");
 			}
