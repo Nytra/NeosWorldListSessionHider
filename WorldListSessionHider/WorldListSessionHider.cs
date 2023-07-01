@@ -8,6 +8,7 @@ using System.Linq;
 using CloudX.Shared;
 using BaseX;
 using FrooxEngine.UIX;
+using System.Threading.Tasks;
 
 namespace WorldListSessionHider
 {
@@ -20,17 +21,19 @@ namespace WorldListSessionHider
 		public static ModConfiguration Config;
 
 		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<bool> MOD_ENABLED = new ModConfigurationKey<bool>("MOD_ENABLED", "Mod Enabled:", () => true);
+		private static ModConfigurationKey<bool> MOD_ENABLED = new ModConfigurationKey<bool>("MOD_ENABLED", "Enable hiding sessions:", () => true);
 		[AutoRegisterConfigKey]
 		private static ModConfigurationKey<dummy> DUMMY_0 = new ModConfigurationKey<dummy>("DUMMY_0", "<size=0></size>", () => new dummy());
 		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<string> HOST_USERIDS = new ModConfigurationKey<string>("HOST_USERIDS", "Host User IDs to hide:", () => "");
+		private static ModConfigurationKey<dummy> DUMMY_0_1 = new ModConfigurationKey<dummy>("DUMMY_0_1", "<color=green>[FILTERS]</color>", () => new dummy());
 		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<string> HOST_USERNAMES = new ModConfigurationKey<string>("HOST_USERNAMES", "Host Usernames to hide:", () => "");
+		private static ModConfigurationKey<string> HOST_USERIDS = new ModConfigurationKey<string>("HOST_USERIDS", "Host User IDs:", () => "");
 		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<string> SESSION_IDS = new ModConfigurationKey<string>("SESSION_IDS", "Session IDs to hide:", () => "");
+		private static ModConfigurationKey<string> HOST_USERNAMES = new ModConfigurationKey<string>("HOST_USERNAMES", "Host Usernames:", () => "");
 		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<bool> HIDE_STRING_MATCHED_SESSIONS_COMPLETELY = new ModConfigurationKey<bool>("HIDE_STRING_MATCHED_SESSIONS_COMPLETELY", "Hide matching sessions completely:", () => false);
+		private static ModConfigurationKey<string> SESSION_IDS = new ModConfigurationKey<string>("SESSION_IDS", "Session IDs:", () => "");
+		[AutoRegisterConfigKey]
+		private static ModConfigurationKey<bool> HIDE_FILTERED_SESSIONS_COMPLETELY = new ModConfigurationKey<bool>("HIDE_FILTERED_SESSIONS_COMPLETELY", "Hide filtered sessions completely:", () => false);
 		[AutoRegisterConfigKey]
 		private static ModConfigurationKey<dummy> DUMMY_1 = new ModConfigurationKey<dummy>("DUMMY_1", "<i><color=gray>All of these can be comma-separated to store multiple values.</color></i>", () => new dummy());
 		[AutoRegisterConfigKey]
@@ -38,25 +41,25 @@ namespace WorldListSessionHider
 		[AutoRegisterConfigKey]
 		private static ModConfigurationKey<dummy> DUMMY_3 = new ModConfigurationKey<dummy>("DUMMY_3", "<size=0></size>", () => new dummy());
 		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<bool> HIDE_DEAD_SESSIONS = new ModConfigurationKey<bool>("HIDE_DEAD_SESSIONS", "Hide dead sessions (experimental):", () => false);
+		private static ModConfigurationKey<dummy> DUMMY_3_1 = new ModConfigurationKey<dummy>("DUMMY_3_1", "<color=green>[STUCK SESSIONS]</color>", () => new dummy());
 		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<int> DEAD_SESSION_LAST_UPDATE_MINUTES = new ModConfigurationKey<int>("DEAD_SESSION_LAST_UPDATE_MINUTES", "If session has not updated for this number of minutes, consider it possibly dead:", () => 30, valueValidator: v => v > 0);
+		private static ModConfigurationKey<bool> HIDE_DEAD_SESSIONS = new ModConfigurationKey<bool>("HIDE_DEAD_SESSIONS", "Hide stuck sessions:", () => true);
+		//[AutoRegisterConfigKey]
+		//private static ModConfigurationKey<int> DEAD_SESSION_LAST_UPDATE_HOURS = new ModConfigurationKey<int>("DEAD_SESSION_LAST_UPDATE_HOURS", "If session has not updated for this number of hours, consider it possibly stuck:", () => 24, valueValidator: v => v > 0);
 		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<bool> HIDE_DEAD_SESSIONS_COMPLETELY = new ModConfigurationKey<bool>("HIDE_DEAD_SESSIONS_COMPLETELY", "Hide dead sessions completely:", () => false);
+		private static ModConfigurationKey<bool> HIDE_DEAD_SESSIONS_COMPLETELY = new ModConfigurationKey<bool>("HIDE_DEAD_SESSIONS_COMPLETELY", "Hide stuck sessions completely:", () => false);
 		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<dummy> DUMMY_4 = new ModConfigurationKey<dummy>("DUMMY_4", "<i><color=gray>A dead session is one that has not been updated recently and you have a pending contact request from it.</color></i>", () => new dummy());
-		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<dummy> DUMMY_5 = new ModConfigurationKey<dummy>("DUMMY_5", "<i><color=gray>In rare cases this could give false-positives.</color></i>", () => new dummy());
-		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<dummy> DUMMY_6 = new ModConfigurationKey<dummy>("DUMMY_6", "<size=0></size>", () => new dummy());
-		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<bool> HIDE_EXPIRED_SESSIONS = new ModConfigurationKey<bool>("HIDE_EXPIRED_SESSIONS", "Hide expired sessions:", () => true);
-		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<int> LAST_UPDATE_MAX_DAYS = new ModConfigurationKey<int>("LAST_UPDATE_MAX_DAYS", "If session has not updated for this number of days, consider it expired:", () => 90, valueValidator: v => v > 0);
-		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<bool> HIDE_EXPIRED_SESSIONS_COMPLETELY = new ModConfigurationKey<bool>("HIDE_EXPIRED_SESSIONS_COMPLETELY", "Hide expired sessions completely:", () => false);
-		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<dummy> DUMMY_7 = new ModConfigurationKey<dummy>("DUMMY_7", "<i><color=gray>Meant to hide sessions that have not updated in a very long time.</color></i>", () => new dummy());
+		private static ModConfigurationKey<dummy> DUMMY_4 = new ModConfigurationKey<dummy>("DUMMY_4", "<i><color=gray>A stuck session is one that shows up in the world list but doesn't actually exist.</color></i>", () => new dummy());
+		//[AutoRegisterConfigKey]
+		//private static ModConfigurationKey<dummy> DUMMY_6 = new ModConfigurationKey<dummy>("DUMMY_6", "<size=0></size>", () => new dummy());
+		//[AutoRegisterConfigKey]
+		//private static ModConfigurationKey<bool> HIDE_EXPIRED_SESSIONS = new ModConfigurationKey<bool>("HIDE_EXPIRED_SESSIONS", "Hide expired sessions:", () => true);
+		//[AutoRegisterConfigKey]
+		//private static ModConfigurationKey<int> LAST_UPDATE_MAX_DAYS = new ModConfigurationKey<int>("LAST_UPDATE_MAX_DAYS", "If session has not updated for this number of days, consider it expired:", () => 90, valueValidator: v => v > 0);
+		//[AutoRegisterConfigKey]
+		//private static ModConfigurationKey<bool> HIDE_EXPIRED_SESSIONS_COMPLETELY = new ModConfigurationKey<bool>("HIDE_EXPIRED_SESSIONS_COMPLETELY", "Hide expired sessions completely:", () => false);
+		//[AutoRegisterConfigKey]
+		//private static ModConfigurationKey<dummy> DUMMY_7 = new ModConfigurationKey<dummy>("DUMMY_7", "<i><color=gray>Meant to hide sessions that have not updated in a very long time.</color></i>", () => new dummy());
 		[AutoRegisterConfigKey]
 		private static ModConfigurationKey<bool> HIDE_ENDED_SESSIONS = new ModConfigurationKey<bool>("HIDE_ENDED_SESSIONS", "Hide ended sessions (Sessions without URLs):", () => false, internalAccessOnly: true);
 		[AutoRegisterConfigKey]
@@ -102,15 +105,23 @@ namespace WorldListSessionHider
 		private static FieldInfo deferredThumbnailField = AccessTools.Field(theType, "_deferredThumbnailUrl");
 		//private static FieldInfo thumbnailTextureField = AccessTools.Field(theType, "_thumbnailTexture");
 
-		private static bool ReceivedContactRequestInSession(SessionInfo sessionInfo)
-		{
-			foreach (SessionUser user in sessionInfo.SessionUsers)
-			{
-				Friend friend = Engine.Current.Cloud.Friends.FindFriend((Friend f) => f.FriendUserId == user.UserID && f.FriendStatus == FriendStatus.Requested);
-				if (friend != null) return true;
-			}
-			return false;
-		}
+		//private static bool ReceivedContactRequestInSession(SessionInfo sessionInfo)
+		//{
+		//	foreach (SessionUser user in sessionInfo.SessionUsers)
+		//	{
+		//		Friend friend = Engine.Current.Cloud.Friends.FindFriend((Friend f) => f.FriendUserId == user.UserID && f.FriendStatus == FriendStatus.Requested);
+		//		if (friend != null) return true;
+		//	}
+		//	return false;
+		//}
+
+		//private static void PrintSessionUsers(SessionInfo sessionInfo)
+		//{
+		//	foreach(SessionUser user in sessionInfo.SessionUsers)
+		//	{
+		//		Debug($"UserID: {user.UserID} Username: {user.Username}");
+		//	}
+		//}
 
 		private static void CheckSession(WorldThumbnailItem worldThumbnailItem, string debugString = "")
 		{
@@ -127,7 +138,7 @@ namespace WorldListSessionHider
 			if (Config.GetValue(EXTRA_LOGGING))
 			{
 				Debug(new string('=', 30));
-				if (debugString.Length > 0) Debug(debugString);
+				Debug("debugString: " + debugString);
 				Debug($"Host UserID: \"{sessionInfo.HostUserId}\" Host Username: \"{sessionInfo.HostUsername}\" SessionID: \"{sessionInfo.SessionId}\"");
 				foreach(string url in sessionInfo.SessionURLs)
 				{
@@ -139,38 +150,23 @@ namespace WorldListSessionHider
 			// Don't hide sessions that the LocalUser is currently in
 			if (Engine.Current.WorldManager.Worlds.Any((World w) => w.SessionId == sessionInfo.SessionId)) return;
 
-			if (Config.GetValue(HIDE_ENDED_SESSIONS) && sessionInfo.HasEnded)
-			{
-                if (Config.GetValue(EXTRA_LOGGING)) Debug("Found ended session (Session without any URLs).");
-				Debug("Hiding session: " + sessionInfo.Name);
-				Hide(worldThumbnailItem, nameTextValue: "<i>[ENDED]</i>", hideCompletely: Config.GetValue(HIDE_ENDED_SESSIONS_COMPLETELY));
-			}
-			else if (Config.GetValue(HIDE_EXPIRED_SESSIONS) && DateTime.UtcNow.Subtract(sessionInfo.LastUpdate).TotalDays > Config.GetValue(LAST_UPDATE_MAX_DAYS))
-			{
-                if (Config.GetValue(EXTRA_LOGGING)) Debug("Session LastUpdate time exceeded max days.");
-				Debug("Hiding session: " + sessionInfo.Name);
-				Hide(worldThumbnailItem, nameTextValue: "<i>[EXPIRED]</i>", hideCompletely: Config.GetValue(HIDE_EXPIRED_SESSIONS_COMPLETELY));
-			}
-			else if (Config.GetValue(SESSION_IDS).Split(',').Contains(sessionInfo.SessionId) ||
+			if (Config.GetValue(SESSION_IDS).Split(',').Contains(sessionInfo.SessionId) ||
 					Config.GetValue(HOST_USERIDS).Split(',').Contains(sessionInfo.HostUserId) ||
 					Config.GetValue(HOST_USERNAMES).Split(',').Contains(sessionInfo.HostUsername))
 			{
-                if (Config.GetValue(EXTRA_LOGGING)) Debug("Session string matched config.");
-				Debug("Hiding session: " + sessionInfo.Name);
-				Hide(worldThumbnailItem, nameTextValue: "<i>[HIDDEN]</i>", hideCompletely: Config.GetValue(HIDE_STRING_MATCHED_SESSIONS_COMPLETELY));
+				Debug("Hiding filtered session: " + sessionInfo.Name);
+				Hide(worldThumbnailItem, nameTextValue: "<i>[HIDDEN]</i>", hideCompletely: Config.GetValue(HIDE_FILTERED_SESSIONS_COMPLETELY));
 			}
-			else if (Config.GetValue(HIDE_DEAD_SESSIONS) && DateTime.UtcNow.Subtract(sessionInfo.LastUpdate).TotalMinutes > Config.GetValue(DEAD_SESSION_LAST_UPDATE_MINUTES) && ReceivedContactRequestInSession(sessionInfo))
+			else if (Config.GetValue(HIDE_DEAD_SESSIONS) && sessionInfo.SessionUsers.Any((SessionUser sessionUser) => (sessionUser.UserID ?? "UserID") == (worldThumbnailItem.LocalUser.UserID ?? "UserID")))
 			{
-                if (Config.GetValue(EXTRA_LOGGING)) Debug("Session LastUpdate time not recent enough AND received a contact request in the session. Session is likely dead.");
-				Debug("Hiding session: " + sessionInfo.Name);
-				Hide(worldThumbnailItem, nameTextValue: "<i>[DEAD]</i>", hideCompletely: Config.GetValue(HIDE_DEAD_SESSIONS_COMPLETELY));
-
-				//Debug("Attempting to get info from API...");
-				//var task = Engine.Current.Cloud.GetSession(sessionInfo.SessionId);
-				//CloudResult<SessionInfo> result = await task;
-				//Debug($"CloudResult: {result}");
+				Debug("Hiding stuck session: " + sessionInfo.Name);
+				Hide(worldThumbnailItem, nameTextValue: "<i>[STUCK]</i>", hideCompletely: Config.GetValue(HIDE_DEAD_SESSIONS_COMPLETELY));
 			}
-			
+			else if (Config.GetValue(HIDE_ENDED_SESSIONS) && sessionInfo.HasEnded)
+			{
+				Debug("Hiding ended session: " + sessionInfo.Name);
+				Hide(worldThumbnailItem, nameTextValue: "<i>[ENDED]</i>", hideCompletely: Config.GetValue(HIDE_ENDED_SESSIONS_COMPLETELY));
+			}
 		}
 
 		private static void Hide(WorldThumbnailItem worldThumbnailItem, string nameTextValue = "<i>[HIDDEN]</i>", bool hideCompletely = false)
