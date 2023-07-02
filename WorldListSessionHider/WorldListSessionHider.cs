@@ -15,7 +15,7 @@ namespace WorldListSessionHider
 	{
 		public override string Name => "WorldListSessionHider";
 		public override string Author => "Nytra";
-		public override string Version => "1.2.0";
+		public override string Version => "1.2.1";
 		public override string Link => "https://github.com/Nytra/NeosWorldListSessionHider";
 		public static ModConfiguration Config;
 
@@ -26,13 +26,15 @@ namespace WorldListSessionHider
 		[AutoRegisterConfigKey]
 		private static ModConfigurationKey<dummy> DUMMY_0_1 = new ModConfigurationKey<dummy>("DUMMY_0_1", "<color=green>[FILTERS]</color>", () => new dummy());
 		[AutoRegisterConfigKey]
+		private static ModConfigurationKey<bool> HIDE_FILTERED_SESSIONS = new ModConfigurationKey<bool>("HIDE_FILTERED_SESSIONS", "Use filters:", () => false);
+		[AutoRegisterConfigKey]
+		private static ModConfigurationKey<bool> HIDE_FILTERED_SESSIONS_COMPLETELY = new ModConfigurationKey<bool>("HIDE_FILTERED_SESSIONS_COMPLETELY", "Hide filtered sessions completely:", () => false);
+		[AutoRegisterConfigKey]
 		private static ModConfigurationKey<string> HOST_USERIDS = new ModConfigurationKey<string>("HOST_USERIDS", "Host User IDs:", () => "");
 		[AutoRegisterConfigKey]
 		private static ModConfigurationKey<string> HOST_USERNAMES = new ModConfigurationKey<string>("HOST_USERNAMES", "Host Usernames:", () => "");
 		[AutoRegisterConfigKey]
 		private static ModConfigurationKey<string> SESSION_IDS = new ModConfigurationKey<string>("SESSION_IDS", "Session IDs:", () => "");
-		[AutoRegisterConfigKey]
-		private static ModConfigurationKey<bool> HIDE_FILTERED_SESSIONS_COMPLETELY = new ModConfigurationKey<bool>("HIDE_FILTERED_SESSIONS_COMPLETELY", "Hide filtered sessions completely:", () => false);
 		[AutoRegisterConfigKey]
 		private static ModConfigurationKey<dummy> DUMMY_1 = new ModConfigurationKey<dummy>("DUMMY_1", "<i><color=gray>All of these can be comma-separated to store multiple values.</color></i>", () => new dummy());
 		[AutoRegisterConfigKey]
@@ -144,16 +146,17 @@ namespace WorldListSessionHider
 				Debug($"LastUpdate: {sessionInfo.LastUpdate}");
 			}
 
-			// Don't hide sessions that the LocalUser is currently in
+			// Don't hide sessions that are currently opened worlds
 			if (Engine.Current.WorldManager.Worlds.Any((World w) => w.SessionId == sessionInfo.SessionId)) return;
 
-			if (Config.GetValue(SESSION_IDS).Split(',').Contains(sessionInfo.SessionId) ||
+			if (Config.GetValue(HIDE_FILTERED_SESSIONS) && Config.GetValue(SESSION_IDS).Split(',').Contains(sessionInfo.SessionId) ||
 					Config.GetValue(HOST_USERIDS).Split(',').Contains(sessionInfo.HostUserId) ||
 					Config.GetValue(HOST_USERNAMES).Split(',').Contains(sessionInfo.HostUsername))
 			{
 				Debug("Hiding filtered session: " + sessionInfo.Name);
 				Hide(worldThumbnailItem, nameTextValue: "<i>[HIDDEN]</i>", hideCompletely: Config.GetValue(HIDE_FILTERED_SESSIONS_COMPLETELY));
 			}
+			// If the session is not an opened world but the local user is in the session then it's a stuck session
 			else if (Config.GetValue(HIDE_DEAD_SESSIONS) && sessionInfo.SessionUsers.Any((SessionUser sessionUser) => (sessionUser.UserID ?? "UserID") == (worldThumbnailItem.LocalUser.UserID ?? "UserID")))
 			{
 				Debug("Hiding stuck session: " + sessionInfo.Name);
