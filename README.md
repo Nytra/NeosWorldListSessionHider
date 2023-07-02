@@ -2,7 +2,7 @@
 
 ![hiddenOwo2](https://github.com/Nytra/NeosWorldListSessionHider/assets/14206961/4338db02-ae53-40ec-9141-e9c8b347792d)
 
-A [NeosModLoader](https://github.com/zkxs/NeosModLoader) mod for [Neos VR](https://neos.com/) that hides sessions in your world list based on host userID/username or sessionID.
+A [NeosModLoader](https://github.com/zkxs/NeosModLoader) mod for [Neos VR](https://neos.com/) that hides sessions in your world list based on host userID/username or sessionID and can also hide stuck sessions. A stuck session is one that appears in the session list but doesn't actually exist and cannot be joined.
 
 Configure with [Neos Mod Settings](https://github.com/badhaloninja/NeosModSettings).
 
