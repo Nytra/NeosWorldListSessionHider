@@ -7,6 +7,7 @@ A [NeosModLoader](https://github.com/zkxs/NeosModLoader) mod for [Neos VR](https
 Configure with [Neos Mod Settings](https://github.com/badhaloninja/NeosModSettings).
 
 This resolves this Neos issue: https://github.com/Neos-Metaverse/NeosPublic/issues/3483
+
 And also this one: https://github.com/Neos-Metaverse/NeosPublic/issues/3563
 
 ## Installation
