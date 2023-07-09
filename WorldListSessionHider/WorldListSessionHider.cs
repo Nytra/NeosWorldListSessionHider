@@ -15,7 +15,7 @@ namespace WorldListSessionHider
 	{
 		public override string Name => "WorldListSessionHider";
 		public override string Author => "Nytra";
-		public override string Version => "1.2.1";
+		public override string Version => "1.2.2";
 		public override string Link => "https://github.com/Nytra/NeosWorldListSessionHider";
 		public static ModConfiguration Config;
 
@@ -104,15 +104,15 @@ namespace WorldListSessionHider
 		private static FieldInfo deferredThumbnailField = AccessTools.Field(theType, "_deferredThumbnailUrl");
 		//private static FieldInfo thumbnailTextureField = AccessTools.Field(theType, "_thumbnailTexture");
 
-		//private static bool ReceivedContactRequestInSession(SessionInfo sessionInfo)
-		//{
-		//	foreach (SessionUser user in sessionInfo.SessionUsers)
-		//	{
-		//		Friend friend = Engine.Current.Cloud.Friends.FindFriend((Friend f) => f.FriendUserId == user.UserID && f.FriendStatus == FriendStatus.Requested);
-		//		if (friend != null) return true;
-		//	}
-		//	return false;
-		//}
+		private static bool ReceivedContactRequestInSession(SessionInfo sessionInfo)
+		{
+			foreach (SessionUser user in sessionInfo.SessionUsers)
+			{
+				Friend friend = Engine.Current.Cloud.Friends.FindFriend((Friend f) => f.FriendUserId == user.UserID && f.FriendStatus == FriendStatus.Requested);
+				if (friend != null) return true;
+			}
+			return false;
+		}
 
 		//private static void PrintSessionUsers(SessionInfo sessionInfo)
 		//{
@@ -149,15 +149,19 @@ namespace WorldListSessionHider
 			// Don't hide sessions that are currently opened worlds
 			if (Engine.Current.WorldManager.Worlds.Any((World w) => w.SessionId == sessionInfo.SessionId)) return;
 
-			if (Config.GetValue(HIDE_FILTERED_SESSIONS) && Config.GetValue(SESSION_IDS).Split(',').Contains(sessionInfo.SessionId) ||
-					Config.GetValue(HOST_USERIDS).Split(',').Contains(sessionInfo.HostUserId) ||
-					Config.GetValue(HOST_USERNAMES).Split(',').Contains(sessionInfo.HostUsername))
+			if (Config.GetValue(HIDE_FILTERED_SESSIONS) && 
+				(Config.GetValue(SESSION_IDS).Split(',').Contains(sessionInfo.SessionId) ||
+				Config.GetValue(HOST_USERIDS).Split(',').Contains(sessionInfo.HostUserId) ||
+				Config.GetValue(HOST_USERNAMES).Split(',').Contains(sessionInfo.HostUsername)))
 			{
 				Debug("Hiding filtered session: " + sessionInfo.Name);
 				Hide(worldThumbnailItem, nameTextValue: "<i>[HIDDEN]</i>", hideCompletely: Config.GetValue(HIDE_FILTERED_SESSIONS_COMPLETELY));
 			}
 			// If the session is not an opened world but the local user is in the session then it's a stuck session
-			else if (Config.GetValue(HIDE_DEAD_SESSIONS) && sessionInfo.SessionUsers.Any((SessionUser sessionUser) => (sessionUser.UserID ?? "UserID") == (worldThumbnailItem.LocalUser.UserID ?? "UserID")))
+			// or if session has present users but hasn't updated for a while
+			else if (Config.GetValue(HIDE_DEAD_SESSIONS) && 
+				(sessionInfo.SessionUsers.Any((SessionUser sessionUser) => (sessionUser.UserID ?? sessionUser.Username) == (worldThumbnailItem.LocalUser.UserID ?? worldThumbnailItem.LocalUser.UserName)) ||
+				(sessionInfo.SessionUsers.Any((SessionUser sessionUser) => sessionUser.IsPresent) && DateTime.UtcNow.Subtract(sessionInfo.LastUpdate).TotalMinutes >= 30)))
 			{
 				Debug("Hiding stuck session: " + sessionInfo.Name);
 				Hide(worldThumbnailItem, nameTextValue: "<i>[STUCK]</i>", hideCompletely: Config.GetValue(HIDE_DEAD_SESSIONS_COMPLETELY));
