@@ -15,7 +15,7 @@ namespace WorldListSessionHider
 	{
 		public override string Name => "WorldListSessionHider";
 		public override string Author => "Nytra";
-		public override string Version => "1.2.2";
+		public override string Version => "1.2.3";
 		public override string Link => "https://github.com/Nytra/NeosWorldListSessionHider";
 		public static ModConfiguration Config;
 
@@ -77,15 +77,15 @@ namespace WorldListSessionHider
 				if (configChangedEvent.Key == EXTRA_LOGGING && Config.GetValue(EXTRA_LOGGING))
 				{
 					Debug("Logging configured strings...");
-					foreach (string s in Config.GetValue(HOST_USERIDS).Split(','))
+					foreach (string s in Config.GetValue(HOST_USERIDS)?.Split(','))
 					{
 						Debug($"UserID: \"{s}\"");
 					}
-					foreach (string s in Config.GetValue(HOST_USERNAMES).Split(','))
+					foreach (string s in Config.GetValue(HOST_USERNAMES)?.Split(','))
 					{
 						Debug($"Username: \"{s}\"");
 					}
-					foreach (string s in Config.GetValue(SESSION_IDS).Split(','))
+					foreach (string s in Config.GetValue(SESSION_IDS)?.Split(','))
 					{
 						Debug($"SessionID: \"{s}\"");
 					}
@@ -104,15 +104,26 @@ namespace WorldListSessionHider
 		private static FieldInfo deferredThumbnailField = AccessTools.Field(theType, "_deferredThumbnailUrl");
 		//private static FieldInfo thumbnailTextureField = AccessTools.Field(theType, "_thumbnailTexture");
 
-		private static bool ReceivedContactRequestInSession(SessionInfo sessionInfo)
+		// Userspace.UserspaceWorld.LocalUser?
+		// although maybe WorldThumbnailItem can exist in non-userspace worlds?
+		private static FrooxEngine.User localUser = null;
+
+		enum HideReason
 		{
-			foreach (SessionUser user in sessionInfo.SessionUsers)
-			{
-				Friend friend = Engine.Current.Cloud.Friends.FindFriend((Friend f) => f.FriendUserId == user.UserID && f.FriendStatus == FriendStatus.Requested);
-				if (friend != null) return true;
-			}
-			return false;
+			Filtered,
+			Stuck,
+			Ended
 		}
+
+		//private static bool ReceivedContactRequestInSession(SessionInfo sessionInfo)
+		//{
+		//	foreach (SessionUser user in sessionInfo.SessionUsers)
+		//	{
+		//		Friend friend = Engine.Current.Cloud.Friends.FindFriend((Friend f) => f.FriendUserId == user.UserID && f.FriendStatus == FriendStatus.Requested);
+		//		if (friend != null) return true;
+		//	}
+		//	return false;
+		//}
 
 		//private static void PrintSessionUsers(SessionInfo sessionInfo)
 		//{
@@ -122,16 +133,60 @@ namespace WorldListSessionHider
 		//	}
 		//}
 
-		private static void CheckSession(WorldThumbnailItem worldThumbnailItem, string debugString = "")
+		private static bool ShouldHideSession(SessionInfo sessionInfo, out HideReason? reason)
 		{
+			string sessionIds = Config.GetValue(SESSION_IDS);
+			string hostUserIds = Config.GetValue(HOST_USERIDS);
+			string hostUsernames = Config.GetValue(HOST_USERNAMES);
+
+			reason = null;
+
+			// Don't hide sessions that are currently opened worlds
+			if (Engine.Current.WorldManager.Worlds.Any((World w) => w.SessionId == sessionInfo.SessionId)) return false;
+
+			// If the session is not an opened world but the local user is in the session then it's a stuck session
+			// or if session has present users but hasn't updated for a while
+			if (Config.GetValue(HIDE_DEAD_SESSIONS) &&
+				(sessionInfo.SessionUsers.Any((SessionUser user) => (user.UserID ?? user.Username) == (localUser.UserID ?? localUser.UserName)) ||
+				(sessionInfo.SessionUsers.Any((SessionUser user) => user.IsPresent) && DateTime.UtcNow.Subtract(sessionInfo.LastUpdate).TotalMinutes >= 30)))
+			{
+				reason = HideReason.Stuck;
+				return true;
+			}
+			else if (Config.GetValue(HIDE_FILTERED_SESSIONS) &&
+				((!string.IsNullOrWhiteSpace(sessionIds) && sessionIds.Split(',').Contains(sessionInfo.SessionId)) ||
+				((!string.IsNullOrWhiteSpace(hostUserIds) && hostUserIds.Split(',').Contains(sessionInfo.HostUserId)) ||
+				((!string.IsNullOrWhiteSpace(hostUsernames) && hostUsernames.Split(',').Contains(sessionInfo.HostUsername))
+				))))
+			{
+				reason = HideReason.Filtered;
+				return true;
+			}
+			else if (Config.GetValue(HIDE_ENDED_SESSIONS) && sessionInfo.HasEnded)
+			{
+				reason = HideReason.Ended;
+				return true;
+			}
+
+			return false;
+		}
+
+		// (Ignore this comment) If the number of sessions for a worldThumbnailItem keeps changing rapidly, use the first non-stuck and non-ended session as the primary one
+		private static void ProcessWorldThumbnailItem(WorldThumbnailItem worldThumbnailItem, string debugString = "")
+		{
+			//bool hasMultipleSessions = false;
+
+			localUser = worldThumbnailItem.LocalUser;
+
+			List<SessionInfo> sessions = new List<SessionInfo>();
 			SessionInfo sessionInfo = Engine.Current.WorldAnnouncer.GetInfoForSessionId(worldThumbnailItem.WorldOrSessionId);
 
 			if (sessionInfo == null)
 			{
-				List<SessionInfo> sessions = new List<SessionInfo>();
 				Engine.Current.WorldAnnouncer.GetSessionsForWorldId(worldThumbnailItem.WorldOrSessionId, sessions);
 				sessionInfo = (SessionInfo)getBestSessionMethod.Invoke(worldThumbnailItem, new object[] { sessions });
 				if (sessionInfo == null) return;
+				//hasMultipleSessions = true;
 			}
 
 			if (Config.GetValue(EXTRA_LOGGING))
@@ -146,30 +201,44 @@ namespace WorldListSessionHider
 				Debug($"LastUpdate: {sessionInfo.LastUpdate}");
 			}
 
-			// Don't hide sessions that are currently opened worlds
-			if (Engine.Current.WorldManager.Worlds.Any((World w) => w.SessionId == sessionInfo.SessionId)) return;
-
-			if (Config.GetValue(HIDE_FILTERED_SESSIONS) && 
-				(Config.GetValue(SESSION_IDS).Split(',').Contains(sessionInfo.SessionId) ||
-				Config.GetValue(HOST_USERIDS).Split(',').Contains(sessionInfo.HostUserId) ||
-				Config.GetValue(HOST_USERNAMES).Split(',').Contains(sessionInfo.HostUsername)))
+			HideReason? reason;
+			if (ShouldHideSession(sessionInfo, out reason))
 			{
-				Debug("Hiding filtered session: " + sessionInfo.Name);
-				Hide(worldThumbnailItem, nameTextValue: "<i>[HIDDEN]</i>", hideCompletely: Config.GetValue(HIDE_FILTERED_SESSIONS_COMPLETELY));
-			}
-			// If the session is not an opened world but the local user is in the session then it's a stuck session
-			// or if session has present users but hasn't updated for a while
-			else if (Config.GetValue(HIDE_DEAD_SESSIONS) && 
-				(sessionInfo.SessionUsers.Any((SessionUser sessionUser) => (sessionUser.UserID ?? sessionUser.Username) == (worldThumbnailItem.LocalUser.UserID ?? worldThumbnailItem.LocalUser.UserName)) ||
-				(sessionInfo.SessionUsers.Any((SessionUser sessionUser) => sessionUser.IsPresent) && DateTime.UtcNow.Subtract(sessionInfo.LastUpdate).TotalMinutes >= 30)))
-			{
-				Debug("Hiding stuck session: " + sessionInfo.Name);
-				Hide(worldThumbnailItem, nameTextValue: "<i>[STUCK]</i>", hideCompletely: Config.GetValue(HIDE_DEAD_SESSIONS_COMPLETELY));
-			}
-			else if (Config.GetValue(HIDE_ENDED_SESSIONS) && sessionInfo.HasEnded)
-			{
-				Debug("Hiding ended session: " + sessionInfo.Name);
-				Hide(worldThumbnailItem, nameTextValue: "<i>[ENDED]</i>", hideCompletely: Config.GetValue(HIDE_ENDED_SESSIONS_COMPLETELY));
+				string nameText;
+				bool configValue;
+				bool flag = true;
+				switch (reason)
+				{
+					case HideReason.Stuck:
+						nameText = "<i>[STUCK]</i>";
+						configValue = Config.GetValue(HIDE_DEAD_SESSIONS_COMPLETELY);
+						break;
+					case HideReason.Filtered:
+						nameText = "<i>[HIDDEN]</i>";
+						configValue = Config.GetValue(HIDE_FILTERED_SESSIONS_COMPLETELY);
+						break;
+					case HideReason.Ended:
+						nameText = "<i>[ENDED]</i>";
+						configValue = Config.GetValue(HIDE_ENDED_SESSIONS_COMPLETELY);
+						break;
+					default:
+						nameText = "<i>[UNKNOWN]</i>";
+						configValue = false;
+						break;
+				}
+				//if (hasMultipleSessions)
+				//{
+				//	HideReason? reason2;
+				//	if (sessions.All((SessionInfo sessionInfo2) => ShouldHideSession(sessionInfo, out reason2)))
+				//	{
+				//		flag = true;
+				//	}
+				//	else
+				//	{
+				//		flag = false;
+				//	}
+				//}
+				Hide(worldThumbnailItem, nameText, configValue && flag);
 			}
 		}
 
@@ -197,7 +266,7 @@ namespace WorldListSessionHider
 			{
 				if (!Config.GetValue(MOD_ENABLED)) return;
 
-				CheckSession(__instance, "Called from UpdateInfo");
+				ProcessWorldThumbnailItem(__instance, "Called from UpdateInfo");
 			}
 		}
 
@@ -208,7 +277,7 @@ namespace WorldListSessionHider
 			{
 				if (!Config.GetValue(MOD_ENABLED)) return;
 
-				__instance.RunSynchronously(delegate { CheckSession(__instance, "Called from OnActivated"); });
+				__instance.RunSynchronously(delegate { ProcessWorldThumbnailItem(__instance, "Called from OnActivated"); });
 			}
 		}
 	}
